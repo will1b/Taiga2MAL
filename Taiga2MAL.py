@@ -104,26 +104,40 @@ def lookup_anime(db_tree, anime_id):
     
     return anime_title, anime_type, episode_count
  
- 
+def get_username():
+    return input("What is your MAL username? "
+              "(required to look in the right directory)\n")
 def main():
     # Get arguments
     args = parser.parse_args()
 
-    username = args.username
-    if username is None:
-        username = input("What is your MAL username? "
-              "(required to look in the right directory)\n")
-    
+    # Get and validate directory
     data_directory = args.data_directory
 
-    # We need anime.xml for extracting titles and episode counts
-    db_tree = parse_no_meta(join(data_directory, "db", "anime.xml"))
-    
-    # Locate anime.xml based on the root directory
-                    
-    path = join(data_directory, "user", username + "@myanimelist", "anime.xml")
- 
-    root = parse_no_meta(path)
+    # We need db/anime.xml for extracting titles and episode counts
+    try:
+        db_tree = parse_no_meta(join(data_directory, "db", "anime.xml"))
+    except FileNotFoundError:
+        print(data_directory + " doesn't seem to be a valid Taiga directory. "
+              "Try manually providing it using the --directory argument")
+        return
+
+    # Get and validate username
+    username = args.username
+    if username is None:
+        username = get_username()
+        
+    # Locate user/anime.xml based on the root directory
+    root = None
+    while (root is None):
+        try:
+            path = join(data_directory, "user", username + "@myanimelist", "anime.xml")
+         
+            root = parse_no_meta(path)
+        except FileNotFoundError:
+            print(username + " doesn't seem to be valid. "
+                  "Please try again.")
+            username = get_username()
  
     root2 = ET.Element('myanimelist')
     tree2 = ET.ElementTree(root2)
