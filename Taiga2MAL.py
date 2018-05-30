@@ -24,6 +24,12 @@ parser.add_argument("-u", "--user", '--username', dest='username',
 parser.add_argument("-d", "--dir", '--directory',dest='data_directory',
                     default=DEFAULT_DATA_DIRECTORY,
                     help="your '<TAIGA_HOME>/data' directory")
+
+def get_text(element, default=None):
+    try:
+        return element.text
+    except AttributeError:
+        return default
  
 def convert_status(status):
     new_status = "Watching"  # Safe default
@@ -89,16 +95,13 @@ def lookup_anime(db_tree, anime_id):
     element = db_tree.find("./anime[id='{0}']".format(anime_id))
     
     # Title is already a CDATA, but we'll just reconstruct
-    anime_title = element.find("title").text
+    anime_title = get_text(element.find("title"),
+                    "malID({})".format(anime_id))
     
-    anime_type = convert_type(element.find("type").text)
- 
-    try:
-        episode_count = element.find("episode_count").text
-    except AttributeError:
-        # Shows of indeterminate length have no episode_count
-        # In this case, default to 0
-        episode_count = '0'
+    anime_type = convert_type(get_text(element.find("type")))
+    
+    episode_count = get_text(element.find("episode_count"), '0')
+    
     return anime_title, anime_type, episode_count
  
  
@@ -127,19 +130,23 @@ def main():
  
     for anime in root:
         # Extract required information from Taiga
-        anime_id = anime.find('id').text
-        progress = anime.find('progress').text
-        start_date = anime.find('date_start').text
-        end_date = anime.find('date_end').text
+        try:
+            anime_id = anime.find('id').text
+        except AttributeError:
+            continue;
+        
+        progress = get_text(anime.find('progress'), '0')
+        start_date = get_text(anime.find('date_start'), '0000-00-00')
+        end_date = get_text(anime.find('date_end'), '0000-00-00')
  
         # Adjust for Taiga storing scores out of 100
-        raw_score = anime.find('score').text
+        raw_score = get_text(anime.find('score'), '0')
         score = str(int(raw_score) // 10)
  
-        status = convert_status(anime.find('status').text)
-        rewatched_times = anime.find('rewatched_times').text
-        rewatching = anime.find('rewatching').text
-        rewatching_ep = anime.find('rewatching_ep').text
+        status = convert_status(get_text(anime.find('status')))
+        rewatched_times = get_text(anime.find('rewatched_times'), '0')
+        rewatching = get_text(anime.find('rewatching'), '0')
+        rewatching_ep = get_text(anime.find('rewatching_ep'), '0')
  
         # Fetch required information from the Taiga anime db
         title, anime_type, episode_count = lookup_anime(db_tree, anime_id)
